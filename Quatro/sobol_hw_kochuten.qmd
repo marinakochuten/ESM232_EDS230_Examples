@@ -1,0 +1,115 @@
+---
+title: "Sobol Homework"
+author: Marina Kochuten
+embed-resources: true
+format: html
+messages: false
+warning: false
+---
+
+```{r}
+# Load libraries
+library(sensitivity)
+library(tidyverse)
+library(gridExtra)
+library(purrr)
+library(ggpubr)
+library(here)
+```
+
+## Part a: Use the Sobel approach to generate parameter values for the 4 parameters
+
+```{r}
+# Source atmospheric conductance function
+source(here("R/Catm.R"))
+
+# Generate two examples of random number from parameter distributions
+np <- 1000
+k_o <- rnorm(mean = 0.1, sd = 0.1 * 0.01, n = np) # standard deviation is 1% of the default values
+k_d <- rnorm(mean = 0.7, sd = 0.7 * 0.01, n = np) # standard deviation is 1% of the default values
+v <- rnorm(mean = 3, sd = 0.5, n = np)
+height <- runif(min = 3.5, max = 5.5, n = np)
+
+X1 <- cbind.data.frame(k_o, k_d, v, height = height)
+
+# repeat sampling
+k_o <- rnorm(mean = 0.1, sd = 0.1 * 0.01, n = np) # standard deviation is 1% of the default values
+k_d <- rnorm(mean = 0.7, sd = 0.7 * 0.01, n = np) # standard deviation is 1% of the default values
+v <- rnorm(mean = 3, sd = 0.5, n = np)
+height <- runif(min = 3.5, max = 5.5, n = np)
+
+X2 <- cbind.data.frame(k_o, k_d, v, height = height)
+
+# there are different versions of sobol functions that have different approaches for estimating parameters and indices, we use an approach implemented by jansen
+sens_Catm_Sobol <- sobolSalt(model = NULL, X1, X2, nboot = 100)
+```
+
+## Part b: Run the atmospheric conductance model for these parameters
+
+```{r}
+# run model for all parameter sets
+# make sure you give the parameters names
+
+parms <- as.data.frame(sens_Catm_Sobol$X)
+colnames(parms) <- colnames(X1)
+res <- pmap_dbl(parms, Catm)
+
+sens_Catm_Sobol <- sensitivity::tell(sens_Catm_Sobol, res, res.names = "ga")  # ga is short for atmospheric conductance
+```
+
+## Part e: Estimate the Sobel Indices for your outut
+
+**Note:** I completed the steps out of order to match what we did in lecture, plotting will come after this!
+
+```{r}
+# main effect:  partitions variance (main effect without co-variance) - sums approximately to one
+#sens_Catm_Sobol$S
+# useful to add names
+row.names(sens_Catm_Sobol$S) <- colnames(parms)
+#sens_Catm_Sobol$S
+
+# total effect - accounts for parameter interactions
+row.names(sens_Catm_Sobol$T) <- colnames(parms)
+#sens_Catm_Sobol$T
+
+# Both the main effect and total effect can tell us something about how the parameter influences results
+
+print(sens_Catm_Sobol)
+```
+
+Most important parameter is windspeed, followed by height!
+
+# Part c: Plot conductance estimates in a way that accounts for parameter uncertainty
+
+```{r}
+# graph two most sensitive parameters
+both <- cbind.data.frame(parms, gs = sens_Catm_Sobol$y)
+
+# look at overall gs sensitvity to uncertainty
+ggplot(both, aes(x = gs)) +
+  geom_histogram() +
+  geom_vline(xintercept = mean(both$gs), col = "cyan")
+```
+
+# Part d: Plot conductance estimates against windspeed use the parameter that is 2nd in terms of total effect on response
+
+```{r}
+# look at response of conductance to the two most important variables
+ggplot(both, aes(v, gs, col = height)) +
+  geom_point() +
+  labs(y = "Conductance (mm/s)", x = "Windspeed")
+```
+
+# Part f
+
+**Comment on what this tells you about how atmospheric conductance and its sensitivity to variation in windspeed differs in this setting as compared to the setting that we examined in class where windspeed was lower and less variable and vegetation was taller**
+
+In this setting where windspeed is higher and vegetation height is lower, atmospheric conductance is much more sensitive to windspeed (as seen by a stronger correlation in the graph) and height becomes the second most important parameter in terms of total effect on response. In the setting we saw in class, atmospheric conductance was the most sensitive to k_d, followed by k_o.
+
+In other words, when vegetation is shorter and wind is stronger, conductance is more sensitive to changes in speed and height than the other parameters.
+
+
+
+
+
+

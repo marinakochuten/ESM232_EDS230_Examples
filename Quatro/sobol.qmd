@@ -12,36 +12,34 @@ library(ggpubr)
 library(here)
 ```
 
-
 # Sobol in R
 
-* *Sensitivity* package
+-   *Sensitivity* package
 
-* Sobol Indices require estimation - and there are different methods to do that
+-   Sobol Indices require estimation - and there are different methods to do that
 
-* The *Sensitivity* package has several of those
+-   The *Sensitivity* package has several of those
 
-* today we will use *sobolSalt* - which uses a method by Saltelli (who has written extensively on Sensitivity analysis)
+-   today we will use *sobolSalt* - which uses a method by Saltelli (who has written extensively on Sensitivity analysis)
 
-* R help pages for *Sensitivity* provide many good references
-
+-   R help pages for *Sensitivity* provide many good references
 
 # Sobol - how to
 
 Similar workflow to LHS
 
-* run Sobol to get parameter sets in a sensitivity analysis object
-* run model with those parameter sets
-* tell the senstivity object about results associated with each parameter set
-* look at sensitivity analysis metric from Sobol
+-   run Sobol to get parameter sets in a sensitivity analysis object
+-   run model with those parameter sets
+-   tell the senstivity object about results associated with each parameter set
+-   look at sensitivity analysis metric from Sobol
 
 Generation of parameter sets slightly different
 
-  * generate two samples of parameter sets by 
-  samplng from apriori (expected) distributions
-  * these would be the distributions you used for LHS
+-   generate two samples of parameter sets by samplng from apriori (expected) distributions
+-   these would be the distributions you used for LHS
 
-#  Example 
+# Example
+
 Atmospheric Conductance as a function of windspeed, vegetation height and parameters
 
 ```{r, setup}
@@ -78,13 +76,11 @@ sens_Catm_Sobol <- sobolSalt(model = NULL, X1, X2, nboot = 100)
 
 now run model for Sobol generated parameter sets and compute indices
 
-* pay attention to values of the indices and confidence intervals
-  * if 0 is within the confidence interval, parameter uncertainty is not influencing output
-  
-* substantial differences between total effect and first order indices suggest parameter interactions
+-   pay attention to values of the indices and confidence intervals
+    -   if 0 is within the confidence interval, parameter uncertainty is not influencing output
+-   substantial differences between total effect and first order indices suggest parameter interactions
 
-TIP: a useful plotting strategy is to plot model output against parameter with the highest total effect
-and then use the parameter with second highest total effect for color
+TIP: a useful plotting strategy is to plot model output against parameter with the highest total effect and then use the parameter with second highest total effect for color
 
 ```{r, sobolrun}
 # run model for all parameter sets
@@ -112,14 +108,14 @@ sens_Catm_Sobol$T
 
 print(sens_Catm_Sobol)
 ```
- 
+
 # Plotting
 
-* uncertainty in the output
+-   uncertainty in the output
 
-* relationships you are interested in
+-   relationships you are interested in
 
-* response to most sensitive parameters
+-   response to most sensitive parameters
 
 ```{r, sobolplot}
 # graph two most sensitive parameters
@@ -146,17 +142,13 @@ ggplot(both, aes(k_o, gs, col = k_d)) +
   labs(y = "Conductance (mm/s)", x = "k_d parameter")
 ```
 
-
- 
-
 # Second order indices
 
 Optional for this course
 
 If you want to also compute a second order indices you need to use a different variation. (scheme=B)
 
-There are multiple implementation of Sobol in the *senstivity* package, they can be more or less stable
-I find *sobolSalt* works well
+There are multiple implementation of Sobol in the *senstivity* package, they can be more or less stable I find *sobolSalt* works well
 
 ```{r, alternative}
 sens_Catm_Sobol2 <- sobolSalt(model = NULL, X1, X2, nboot = 100, scheme = "B")
