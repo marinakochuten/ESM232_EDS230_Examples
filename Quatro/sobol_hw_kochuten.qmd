@@ -7,6 +7,18 @@ messages: false
 warning: false
 ---
 
+# Assignment Part 1
+
+Write a paragraph describing how results of the sensitivity analysis reported on in the paper might contribute to understanding (or prediction) within an environmental problem solving or management context.
+
+**Exploring snow model parameter sensitivity using Sobol' variance decomposition**
+
+The sensitivity analysis presented in the paper provides insights for environmental problem solving by identifying which model parameters most significantly influence snow water equivalent (SWE) simulations. Knowing which parameters influence the outputs of these models allows modelers to be informed to prioritize accurate data collection and calibration for these most impactful variables. In the empirical SNOW-17 model MFMAX and PLWHC were the most impactful parameters, while in the physically-based VIC model, expA1 and expA2 were the most important factors. In this VIC model, expA1 and expA2 are currently fixed. This sensitivity analysis illuminates the importance of allowing these parameters to be adjusted based on user input, which can significantly improve SWE projections and therefore water management practices.
+
+
+
+# Assignment Part 2
+
 ```{r}
 # Load libraries
 library(sensitivity)
