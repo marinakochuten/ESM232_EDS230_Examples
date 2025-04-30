@@ -99,8 +99,14 @@ both <- cbind.data.frame(parms, gs = sens_Catm_Sobol$y)
 
 # look at overall gs sensitvity to uncertainty
 ggplot(both, aes(x = gs)) +
-  geom_histogram() +
-  geom_vline(xintercept = mean(both$gs), col = "cyan")
+    geom_histogram(fill = "grey") +
+    labs(x = "Conductance",
+         y = "Count",
+         title = "Overall uncertainty in conductance") +
+    geom_vline(xintercept = mean(both$gs), 
+               col = "forestgreen") +
+    geom_text(aes(x = mean(both$gs) + 8, y = 580, label = "Mean"), color = "forestgreen") +
+    theme_minimal()
 ```
 
 # Part d: Plot conductance estimates against windspeed use the parameter that is 2nd in terms of total effect on response
@@ -108,8 +114,9 @@ ggplot(both, aes(x = gs)) +
 ```{r}
 # look at response of conductance to the two most important variables
 ggplot(both, aes(v, gs, col = height)) +
-  geom_point() +
-  labs(y = "Conductance (mm/s)", x = "Windspeed")
+    geom_point() +
+    labs(y = "Conductance (mm/s)", x = "Windspeed (m/s)") +
+    theme_minimal()
 ```
 
 # Part f
