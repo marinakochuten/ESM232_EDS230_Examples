@@ -1,0 +1,156 @@
+---
+title: "ODE & Dynamic Models Assignment"
+author: Marina Kochuten
+embed-resources: true
+format: html
+warning: false
+messages: false
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(deSolve)
+library(sensitivity)
+library(here)
+```
+
+
+## The Model
+
+Consider the following model of forest growth (where forest size measured in units of carbon (C))
+
+-   dC/dt = r ∗ C for forests where C is below a threshold canopy closure
+-   dC/dt = g ∗ (1 − C/K) for forests where carbon is at or above the threshold canopy closure
+-   and K is a carrying capacity in units of carbon
+
+The size of the forest (C), Canopy closure threshold and carrying capacity are all in units of carbon. You could think of the canopy closure threshold as the size of the forest at which growth rates change from exponential to linear You can think of r, as early exponential growth rate and as the linear growth rate once canopy closure has been reached.
+
+## 1. Implement the model as a differential equation
+
+I implemented this model as a differential equation in the R script `forest_growth.R`
+
+## 2. Run the model using ODE Solver
+
+Run the model for 300 years (using the ODE solver) starting with an initial forest size of 10 kg/C, and using the following parameters:
+
+- canopy closure threshold of 50 kgC
+- K = 250 kg C (carrying capacity)
+- r = 0.01 (exponential growth rate before before canopy closure)
+- g = 2 kg/year (linear growth rate after canopy closure)
+
+```{r}
+# Source forest growth function
+source(here("R/forest_growth.R"))
+
+# Make a list of parameters
+c_initial <- c(C = 10)
+times <- seq(from = 1, to = 300)
+params <- list(K = 250, r = 0.01, g = 2, thresh = 50)
+
+# Use ode solver
+results <- ode(y = c_initial, times = times, func = forest_growth, parms = params)
+```
+
+
+## 3. Graph the results
+
+Graph the trajectory with the parameters as given (e.g no uncertainty)
+
+```{r}
+ggplot(results) +
+    geom_point(aes(x = time, y = C)) +
+    scale_y_continuous(limits = c(0,200)) +
+    labs(y = "Forest Size (kg/Carbon)",
+         x = "Time (years)") +
+    theme_minimal() +
+    theme(
+        axis.title.y = element_text(margin = margin(0, 10, 0, 5)),
+        axis.title.x = element_text(margin = margin(10, 0, 5, 0))
+    )
+```
+
+The rate of forest growth switches from linear growth to logistic when forest size reaches the threshold 50 kg/C that we initially set. 
+
+## 4. Run a sobol global sensitivity analysis
+
+Run a sobol global (vary all parameters at the same time) sensitivity analysis that explores how the estimated maximum forest size (e.g maximum of C 300 years), varies with these parameters:
+
+- pre canopy closure growth rate (r)
+- post-canopy closure growth rate (g)
+- canopy closure threshold and carrying capacity (K)
+
+Assume that parameters are all normally distributed with means as given above and standard deviation of 10% of mean value
+
+```{r}
+##### Set up sample parameters #####
+# Set 1
+r <- rnorm(mean = 0.01, sd = 0.01 * 0.1, n = 2000)
+g <- rnorm(mean = 2, sd = 2 * 0.1, n = 2000)
+K <- rnorm(mean = 250, sd = 250 * 0.1, n = 2000)
+X1 <- cbind.data.frame(r = r, g = g, K = K)
+# Add threshold to parameter list - but we are not varying this one
+X1 <- X1 |>
+    mutate(thresh = 50)
+
+# Set 2
+r <- rnorm(mean = 0.01, sd = 0.01 * 0.1, n = 2000)
+g <- rnorm(mean = 2, sd = 2 * 0.1, n = 2000)
+K <- rnorm(mean = 250, sd = 250 * 0.1, n = 2000)
+X2 <- cbind.data.frame(r = r, g = g, K = K)
+# Add threshold to parameter list - but we are not varying this one
+X2 <- X2 |>
+    mutate(thresh = 50)
+
+# Set any potential negative values to 0
+X1 <- X1 |>
+    map_df(pmax, 0.0)
+X2 <- X2 |>
+    map_df(pmax, 0.0)
+
+
+
+##### Create Sobel object #####
+sens_P <- sobolSalt(model = NULL, X1, X2, nboot = 300)
+
+# Look at parameter sets
+head(sens_P$X)
+
+# Add names
+colnames(sens_P$X) <- c("r", "g", "K", "thresh")
+
+# Look at parameter sets
+head(sens_P$X)
+
+##### Format parameters for ODE Solver #####
+
+# Make sobel parameters into a list
+params <- list(r = sens_P$X[1, "r"], 
+               g = sens_P$X[1, "g"],
+               K = sens_P$X[1, "K"],
+               thresh = sens_P$X[1, "thresh"])
+
+# Set initial conditions
+times <- seq(from = 1, to = 300)
+c_initial <- c(C = 10)
+
+
+##### Test with ODE solver #####
+result <- ode(y = c_initial, times = times, func = forest_growth, parms = params)
+
+```
+```{r}
+any(is.na(unlist(params)))
+```
+
+
+## 5. Graph the results of the sensitivity analysis 
+
+... as a box plot of maximum forest size and record the two Sobol indices (S and T).
+
+
+## 6. Discussion
+
+In 2-3 sentences, discuss what the results of your simulation might mean. (For example think about how what parameters climate change might influence)
+
+
+
