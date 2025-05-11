@@ -23,7 +23,6 @@ source(here("R/dexppop.R"))
 # see how it works
 dexppop(P = 20, r = 0.01)
 
-
 # what is this?
 
 # notices this is the same as

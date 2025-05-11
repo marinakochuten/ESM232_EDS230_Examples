@@ -61,7 +61,8 @@ ggplot(results) +
     geom_point(aes(x = time, y = C)) +
     scale_y_continuous(limits = c(0,200)) +
     labs(y = "Forest Size (kg/Carbon)",
-         x = "Time (years)") +
+         x = "Time (years)",
+         title = "Forest Growth Model Results") +
     theme_minimal() +
     theme(
         axis.title.y = element_text(margin = margin(0, 10, 0, 5)),
@@ -136,10 +137,61 @@ c_initial <- c(C = 10)
 
 ##### Test with ODE solver #####
 result <- ode(y = c_initial, times = times, func = forest_growth, parms = params)
+result <- as.data.frame(result)
+
+```
+
+
+```{r}
+# Now, I need to build a function that will run the ode solver for all the sobel params and give max forest size
+
+# Metric function
+max_c <- function(result) {
+    
+    max_c <- max(result$C)
+    
+    return(list(max_c))
+}
+
+# test
+max_c(result)
+
+
+# Wrapper function
+wrapper <- function(K, g, r, thresh, c_initial, times, forest_growth_func, max_c_func) {
+    parms <- list(r = r, K = K, g = g, thresh = thresh)
+    result <- ode(y = c_initial, times = times, func = forest_growth_func, parms = parms, method="euler")
+    colnames(result) <- c("time", "C")
+    
+    # get metrics
+    metrics <- max_c_func(as.data.frame(result))
+    return(metrics)
+}
+
+
+# test
+wrapper(
+  r = 0.01, K = 250, g = 2, thresh = 50, c_initial = c(C = 10), times = seq(from = 1, to = 300),
+  forest_growth_func = forest_growth, max_c_func = max_c
+)
+
 
 ```
 ```{r}
-any(is.na(unlist(params)))
+
+# List out all parameters
+params <- list(r = sens_P$X[, "r"], 
+               g = sens_P$X[, "g"],
+               K = sens_P$X[, "K"],
+               thresh = sens_P$X[, "thresh"])
+
+# Use pmap to use ode on sobel params
+allresults <- params %>% pmap(wrapper, c_initial = c(C = 10), times = seq(from = 1, to = 300), forest_growth_func = forest_growth, max_c_func = max_c)
+
+# extract out results from pmap into a data frame
+allres <- allresults %>%
+  map_dfr(~ tibble(max_c = .x[[1]]))
+
 ```
 
 
@@ -147,10 +199,47 @@ any(is.na(unlist(params)))
 
 ... as a box plot of maximum forest size and record the two Sobol indices (S and T).
 
+```{r}
+# Get max forest size values
+max_forest <- sens_P$y
+
+
+tmp <- allres %>% pivot_longer(cols = everything(), names_to = "max_forest", values_to = "value")
+
+# Box plot of max forest size with varied parameters
+ggplot(tmp) + 
+  geom_boxplot(aes(x = max_forest, y = value)) +
+  labs(title = "Sensitivity Analysis of Max Forest Size",
+       y = "Maximum Forest Size (C)",
+       x = "") +
+    scale_y_continuous() +
+  theme_minimal() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank())
+    
+```
+
+```{r}
+# Record two sobel indices
+
+sens_P_max <- sensitivity::tell(sens_P, allres$max_c)
+
+# first-order indices (main effect without co-variance)
+rownames(sens_P_max$S) <- c("r", "g", "K", "thresh")
+print(sens_P_max$S)
+```
+```{r}
+# total sensitivity index -note that this partitions the output variance
+rownames(sens_P_max$T) <- c("r", "g", "K", "thresh")
+print(sens_P_max$T)
+```
+
 
 ## 6. Discussion
 
 In 2-3 sentences, discuss what the results of your simulation might mean. (For example think about how what parameters climate change might influence)
+
+Looking at the sobel indices, the max forest size is the most sensitive to r, the exponential growth rate before before canopy closure, and carrying capacity K. Climate change could impact both parameters. For example, increased temperatures or drought might reduce r by stressing young forests. Also, increasing frequent disturbances such as fire could decrease K. 
 
 
 
